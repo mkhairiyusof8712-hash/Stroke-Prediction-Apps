@@ -24,6 +24,7 @@ except Exception as e:
     st.error(f'Error loading model: {e}')
     st.stop()
 
+
 # Input fields for features
 st.header("Patient Information")
 
@@ -49,7 +50,8 @@ input_data = {
     'bmi': bmi,
     'smoking_status_formerly smoked': 1 if selected_smoking_status == 'formerly smoked' else 0,
     'smoking_status_never smoked': 1 if selected_smoking_status == 'never smoked' else 0,
-    'smoking_status_smokes': 1 if selected_smoking_status == 'smokes' else 0
+    'smoking_status_smokes': 1 if selected_smoking_status == 'smokes' else 0,
+    'smoking_status_unknown': 1 if selected_smoking_status == 'unknown' else 0
 }
 
 # Convert input data to a DataFrame, ensuring correct feature order
@@ -64,9 +66,6 @@ for feature in selected_features:
 processed_input = processed_input[selected_features] # Reorder to match training
 
 
-# ✅ DEBUG PRINT (letak sini)
-st.write("Expected features:", selected_features)
-st.write("Input features:", processed_input.columns.tolist())
 
 # Scale numerical features using the loaded scaler
 processed_input_scaled = processed_input.copy()
