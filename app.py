@@ -9,7 +9,7 @@ st.write('Enter patient details to predict stroke risk using the Logistic Regres
 
 # Load the deployment bundle
 try:
-    deployment_bundle_path = '/content/trained_stroke_model_lr.pkl' # Path to your saved model
+    deployment_bundle_path = 'trained_stroke_model_lr.pkl' # Path to your saved model
     deployment_bundle = joblib.load(deployment_bundle_path)
     model = deployment_bundle['model']
     scaler = deployment_bundle['scaler']
