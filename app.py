@@ -63,6 +63,11 @@ for feature in selected_features:
 
 processed_input = processed_input[selected_features] # Reorder to match training
 
+
+# ✅ DEBUG PRINT (letak sini)
+st.write("Expected features:", selected_features)
+st.write("Input features:", processed_input.columns.tolist())
+
 # Scale numerical features using the loaded scaler
 processed_input_scaled = processed_input.copy()
 processed_input_scaled[num_cols_for_scaling] = scaler.transform(processed_input[num_cols_for_scaling])
