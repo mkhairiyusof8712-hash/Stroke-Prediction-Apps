@@ -69,11 +69,11 @@ processed_input = processed_input[selected_features] # Reorder to match training
 
 # Scale numerical features using the loaded scaler
 processed_input_scaled = processed_input.copy()
-processed_input_scaled[num_cols_for_scaling] = scaler.transform(processed_input[num_cols_for_scaling])
+processed_input_scaled[num_cols_for_scaling] = scaler.transform(processed_input[num_cols_for_scaling].values)
 
 if st.button('Predict Stroke Risk'):
     # Make prediction
-    prediction_proba = model.predict_proba(processed_input_scaled)[:, 1][0]
+    prediction_proba = model.predict_proba(processed_input_scaled.values)[:, 1][0]
     prediction_class = (prediction_proba >= optimized_threshold).astype(int)
 
     st.subheader('Prediction Result:')
