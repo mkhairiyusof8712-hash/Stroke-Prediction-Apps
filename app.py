@@ -3,49 +3,65 @@ import pandas as pd
 import joblib
 import numpy as np
 
-# Load the deployment bundle (model, scaler, selected features, optimized threshold)
+# 1. Load the deployment bundle
 @st.cache_resource
 def load_model():
+    # This file contains: model, scaler, selected_features, and optimized_threshold
     return joblib.load('trained_stroke_model_lr.pkl')
 
-deployment_bundle = load_model()
-model = deployment_bundle['model']
-scaler = deployment_bundle['scaler']
-selected_features = deployment_bundle['selected_features']
-optimized_threshold = deployment_bundle['optimized_threshold']
+try:
+    bundle = load_model()
+    model = bundle['model']
+    scaler = bundle['scaler']
+    features = bundle['selected_features']
+    threshold = bundle['optimized_threshold']
+except Exception as e:
+    st.error(f"Error loading model: {e}")
+    st.stop()
 
-st.title('☥️ Stroke Risk Prediction Portal')
+st.set_page_config(page_title="Stroke Risk Portal", page_icon="🏥")
+st.title('🏥 Stroke Risk Prediction Portal')
+
 st.markdown("""
-This application uses a clinical Logistic Regression model to estimate the probability of stroke 
-based on key health metrics: **Age, Glucose Levels, and BMI**.
+This diagnostic tool uses a **Logistic Regression** model trained on clinical data 
+to estimate stroke probability based on Age, Glucose, and BMI.
 """)
 
-st.sidebar.header('Patient Diagnostics')
+st.sidebar.header('Patient Clinical Metrics')
 
-# Input features from the user via sidebar
-age = st.sidebar.slider('Age', 0, 120, 50)
-avg_glucose_level = st.sidebar.slider('Average Glucose Level (mg/dL)', 50.0, 300.0, 100.0)
-bmi = st.sidebar.slider('Body Mass Index (BMI)', 10.0, 60.0, 25.0)
+# User Inputs
+age = st.sidebar.number_input('Age', min_value=0, max_value=120, value=50)
+glucose = st.sidebar.number_input('Avg Glucose Level (mg/dL)', min_value=40.0, max_value=300.0, value=100.0)
+bmi = st.sidebar.number_input('Body Mass Index (BMI)', min_value=10.0, max_value=60.0, value=25.0)
 
-# Prepare input data for prediction
-input_data = pd.DataFrame([[age, avg_glucose_level, bmi]], columns=selected_features)
+# Processing
+if st.button('Run Risk Analysis'):
+    # Create DataFrame matching training feature names
+    raw_input = pd.DataFrame([[age, glucose, bmi]], columns=features)
+    
+    # IMPORTANT: Use the scaler from the bundle to transform input
+    scaled_input = scaler.transform(raw_input)
+    
+    # Get probability for class 1 (Stroke)
+    prob = model.predict_proba(scaled_input)[0, 1]
+    
+    st.divider()
+    st.subheader("Diagnostic Result")
+    
+    col1, col2 = st.columns(2)
+    col1.metric("Calculated Risk", f"{prob:.2%}")
+    col2.metric("Clinical Threshold", f"{float(threshold):.2%}")
 
-# Scale the input data using the pre-fitted scaler
-input_data_scaled = scaler.transform(input_data)
-
-# Make prediction probability
-prediction_proba = model.predict_proba(input_data_scaled)[:, 1][0]
-
-st.subheader('Prediction Result')
-if st.button('Run Diagnostic'):
-    if prediction_proba >= optimized_threshold:
-        st.error(f'**Result: High Risk**')
-        st.write(f'Calculated Probability: {prediction_proba:.2%}')
-        st.warning('The score exceeds the clinical threshold. Preventive consultation is recommended.')
+    if prob >= threshold:
+        st.error("⚠️ **Result: HIGH RISK**")
+        st.warning("The patient's profile exceeds the optimized clinical threshold for stroke risk. Immediate medical consultation is advised.")
     else:
-        st.success(f'**Result: Low Risk**')
-        st.write(f'Calculated Probability: {prediction_proba:.2%}')
-        st.info('The score is within the acceptable range based on current clinical data.')
+        st.success("✅ **Result: LOW RISK**")
+        st.info("The patient's profile is currently below the high-risk threshold. Continue regular health monitoring.")
+
+    with st.expander("View Technical Details"):
+        st.write("**Feature Scaling Verification (Internal):**")
+        st.write(pd.DataFrame(scaled_input, columns=[f"scaled_{c}" for c in features]))
 
 st.divider()
-st.caption('Note: This tool is for educational purposes and based on the Stroke Risk Dataset analysis.')
+st.caption("Disclaimer: This is a decision support tool for educational use only and does not replace professional medical advice.")
