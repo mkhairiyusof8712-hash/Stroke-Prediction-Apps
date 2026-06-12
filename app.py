@@ -13,6 +13,7 @@ try:
     deployment_bundle = joblib.load(deployment_bundle_path)
     model = deployment_bundle['model']
     scaler = deployment_bundle['scaler']
+    # Use the selected_features from the deployment bundle to ensure consistency
     selected_features = deployment_bundle['selected_features']
     optimized_threshold = deployment_bundle['optimized_threshold']
     num_cols_for_scaling = deployment_bundle['num_cols_for_scaling'] # Columns that were scaled
@@ -28,48 +29,60 @@ except Exception as e:
 # Input fields for features
 st.header("Patient Information")
 
-# Numerical features
-age = st.slider('Age', 0, 100, 50)
-avg_glucose_level = st.slider('Average Glucose Level', 50.0, 300.0, 100.0)
-bmi = st.slider('BMI', 10.0, 60.0, 25.0)
+input_data_raw = {}
 
-# Binary features (0 or 1)
-hypertension = st.checkbox('Hypertension', False)
-heart_disease = st.checkbox('Heart Disease', False)
-
-# Smoking Status (mutually exclusive, choose one)
-smoking_status_options = ['never smoked', 'formerly smoked', 'smokes', 'unknown']
-selected_smoking_status = st.radio('Smoking Status', smoking_status_options)
-
-# Create a dictionary for the input data, matching the model's expected features
-input_data = {
-    'age': age,
-    'hypertension': 1 if hypertension else 0,
-    'heart_disease': 1 if heart_disease else 0,
-    'avg_glucose_level': avg_glucose_level,
-    'bmi': bmi,
-    'smoking_status_formerly smoked': 1 if selected_smoking_status == 'formerly smoked' else 0,
-    'smoking_status_never smoked': 1 if selected_smoking_status == 'never smoked' else 0,
-    'smoking_status_smokes': 1 if selected_smoking_status == 'smokes' else 0,
-    'smoking_status_unknown': 1 if selected_smoking_status == 'unknown' else 0
+# Define ranges for numerical features (adjust as needed)
+numerical_ranges = {
+    'age': (0, 100, 50),
+    'avg_glucose_level': (50.0, 300.0, 100.0),
+    'bmi': (10.0, 60.0, 25.0)
 }
 
+# Handle numerical inputs
+for feature_name in num_cols_for_scaling:
+    min_val, max_val, default_val = numerical_ranges.get(feature_name, (0.0, 1.0, 0.5)) # Default generic if not found
+    input_data_raw[feature_name] = st.slider(feature_name.replace('_', ' ').title(), min_val, max_val, default_val)
+
+# Handle smoking status as a single selectbox, then one-hot encode it
+smoking_options = ['never smoked', 'smokes', 'formerly smoked', 'unknown']
+selected_smoking_status = st.selectbox('Smoking Status', smoking_options, index=0) # Default to 'never smoked'
+
+# Initialize one-hot encoded smoking status features to 0
+input_data_raw['smoking_status_never smoked'] = 0
+input_data_raw['smoking_status_smokes'] = 0
+input_data_raw['smoking_status_unknown'] = 0
+
+# Set the selected smoking status feature to 1
+if selected_smoking_status == 'never smoked':
+    input_data_raw['smoking_status_never smoked'] = 1
+elif selected_smoking_status == 'smokes':
+    input_data_raw['smoking_status_smokes'] = 1
+elif selected_smoking_status == 'unknown':
+    input_data_raw['smoking_status_unknown'] = 1
+# 'formerly smoked' is the base case due to drop_first=True, so no specific _formerly_smoked column is set to 1.
+
+# Handle binary features (hypertension, heart_disease)
+binary_features = []
+for f in selected_features:
+    if f not in num_cols_for_scaling and not f.startswith('smoking_status_'):
+        binary_features.append(f)
+
+for feature_name in binary_features:
+    input_data_raw[feature_name] = st.checkbox(feature_name.replace('_', ' ').title(), value=False) # Default to No (0)
+    input_data_raw[feature_name] = 1 if input_data_raw[feature_name] else 0 # Convert bool to int
+
 # Convert input data to a DataFrame, ensuring correct feature order
-processed_input = pd.DataFrame([input_data])
+processed_input = pd.DataFrame([input_data_raw])
 
-# Ensure all expected features are present, adding missing ones with 0 if necessary
-# This is crucial if some features were dropped during preprocessing (e.g., gender_other) but were part of selected_features
-for feature in selected_features:
-    if feature not in processed_input.columns:
-        processed_input[feature] = 0
-
-processed_input = processed_input[selected_features] # Reorder to match training
+# Ensure all selected_features are present and in the correct order
+processed_input = processed_input[selected_features]
 
 
 
 # Scale numerical features using the loaded scaler
 processed_input_scaled = processed_input.copy()
-processed_input_scaled[num_cols_for_scaling] = scaler.transform(processed_input[num_cols_for_scaling].values)
+if num_cols_for_scaling:
+    processed_input_scaled[num_cols_for_scaling] = scaler.transform(processed_input[num_cols_for_scaling].values)
 
 if st.button('Predict Stroke Risk'):
     # Make prediction
