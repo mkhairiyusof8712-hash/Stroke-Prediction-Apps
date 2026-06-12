@@ -1,5 +1,8 @@
+pandas
+scikit-learn
 streamlit
 joblib
-pandas
 numpy
-scikit-learn
+imbalanced-learn
+xgboost
+lightgbm
