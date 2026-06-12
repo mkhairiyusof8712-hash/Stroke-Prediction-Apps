@@ -23,7 +23,7 @@ st.set_page_config(page_title="Stroke Risk Portal", page_icon="🏥")
 st.title('🏥 Stroke Risk Prediction Portal')
 
 st.markdown("""
-This diagnostic tool uses a **Logistic Regression** model trained on clinical data 
+This diagnostic tool uses a **Logistic Regression** model trained on clinical data
 to estimate stroke probability based on Age, Glucose, and BMI.
 """)
 
@@ -38,16 +38,20 @@ bmi = st.sidebar.number_input('Body Mass Index (BMI)', min_value=10.0, max_value
 if st.button('Run Risk Analysis'):
     # Create DataFrame matching training feature names
     raw_input = pd.DataFrame([[age, glucose, bmi]], columns=features)
-    
+
     # IMPORTANT: Use the scaler from the bundle to transform input
     scaled_input = scaler.transform(raw_input)
-    
+
+    ###
+    scaled_input_df = pd.DataFrame(scaled_input, columns=features)
+    ###
+
     # Get probability for class 1 (Stroke)
-    prob = model.predict_proba(scaled_input)[0, 1]
-    
+    prob = model.predict_proba(scaled_input_df)[0, 1]
+
     st.divider()
     st.subheader("Diagnostic Result")
-    
+
     col1, col2 = st.columns(2)
     col1.metric("Calculated Risk", f"{prob:.2%}")
     col2.metric("Clinical Threshold", f"{float(threshold):.2%}")
